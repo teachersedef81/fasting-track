@@ -87,7 +87,32 @@
         </footer>
     </div>
 
+   
+<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
     <script>
+    // ---- BURASI SİZİN MEVCUT JAVASCRIPT KODLARINIZIN BAŞLADIĞI YER ----
+
+    // 1. FIREBASE KONSOLUNDAN KOPYALADIĞINIZ firebaseConfig OBJESİNİ BURAYA YAPIŞTIRIN:
+   const firebaseConfig = {
+    apiKey: "AIzaSyCshw-M2mDwUg_Zfkd-PRyPas5owutWbJo",
+    authDomain: "fasting-track.firebaseapp.com",
+    projectId: "fasting-track",
+    storageBucket: "fasting-track.firebasestorage.app",
+    messagingSenderId: "1030936924515",
+    appId: "1:1030936924515:web:89868eb46480f7960bc356",
+    measurementId: "G-31GBVXS317"
+  };
+
+    // 2. FIREBASE'İ BAŞLATIN:
+    firebase.initializeApp(firebaseConfig);
+
+    // 3. KULLANACAĞINIZ SERVİSLERE REFERANSLAR OLUŞTURUN:
+    const db = firebase.firestore(); // Firestore veritabanı için
+    const auth = firebase.auth();   // Firebase Authentication için
+
+    initApp(); // Uygulamanızın başlangıç fonksiyonu
         // --- APPLICATION STATE AND DATA ---
         let dailyEntries = JSON.parse(localStorage.getItem('ketoTrackerEntries_v1')) || [];
         let currentView = 'DailyEntry';
