@@ -7,17 +7,7 @@
     <title>Keto & Aralıklı Oruç Takip Uygulaması</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Visualization & Content Choices:
-        - Tarih: Date input. Goal: Kayıt tarihi seçimi. Interaction: Takvimden seçme. Justification: Kullanıcı dostu tarih girişi.
-        - Oruç Süresi: Time inputs, radio/select. Goal: Oruç takibi. Interaction: Süre otomatik hesaplama. Justification: Manuel hesaplama hatasını önler. Chart: Fasting hours (line/bar) in Progress.
-        - Karbonhidrat: Checkboxes, text input. Goal: Karbonhidrat ve ketozis takibi. Justification: Durum hızlı işaretleme.
-        - Yenilenler: Text inputs/areas. Goal: Yemek kaydı. Interaction: Dinamik öğün ekleme (opsiyonel, basit tutulacak). Justification: Detaylı kayıt imkanı.
-        - Su/Elektrolit: Number input/buttons, checkboxes. Goal: Sıvı ve mineral takibi. Justification: Kolay miktar girişi.
-        - Ruh Hali/Enerji: Range sliders/radio buttons. Goal: Öznel durum takibi. Interaction: Grafiksel gösterim. Chart: Mood/Energy over time (line) in Progress. Justification: Trend analizi.
-        - Notlar: Textarea. Goal: Ek bilgi kaydı. Justification: Esnek not alanı.
-        - Kütüphane: Chart.js (Canvas tabanlı grafikler için).
-        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-</head>
+    </head>
 <body class="bg-slate-50 text-slate-800">
 
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
@@ -41,24 +31,23 @@
         </footer>
     </div>
 
-   
+    
 <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
     <script>
-    // ---- BURASI SİZİN MEVCUT JAVASCRIPT KODLARINIZIN BAŞLADIĞI YER ----
+    // ---- JAVASCRIPT KODLARI ----
 
-    // 1. FIREBASE KONSOLUNDAN KOPYALADIĞINIZ firebaseConfig OBJESİNİ BURAYA YAPIŞTIRIN:
-const firebaseConfig = {
-  apiKey: "AIzaSyCshw-M2mDwUg_Zfkd-PRyPas5owutWbJo",
-  authDomain: "fasting-track.firebaseapp.com",
-  projectId: "fasting-track",
-  storageBucket: "fasting-track.firebasestorage.app",
-  messagingSenderId: "1030936924515",
-  appId: "1:1030936924515:web:89868eb46480f7960bc356",
-  measurementId: "G-31GBVXS317"
-};
-
+    // 1. FIREBASE CONFIG OBJESİ (bb.png ekran görüntünüzdeki değerlerle aynı olmalı)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCshw-M2mDwUg_Zfkd-PRyPas5owutWbJo", // bb.png ekran görüntünüzdeki değer
+      authDomain: "fasting-track.firebaseapp.com",
+      projectId: "fasting-track",
+      storageBucket: "fasting-track.firebasestorage.app",
+      messagingSenderId: "1030936924515",
+      appId: "1:1030936924515:web:89868eb46480f7960bc356",
+      measurementId: "G-31GBVXS317"
+    };
 
     // 2. FIREBASE'İ BAŞLATIN:
     firebase.initializeApp(firebaseConfig);
@@ -70,8 +59,8 @@ const firebaseConfig = {
         // --- APPLICATION STATE AND DATA ---
         let dailyEntries = []; // Veriler Firestore'dan geleceği için başlangıçta boş dizi
         let currentView = 'DailyEntry';
-        let selectedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        let charts = {}; // To store Chart.js instances
+        let selectedDate = new Date().toISOString().split('T')[0]; 
+        let charts = {}; 
 
         const motivationQuotes = [
             "Bugün attığın küçük adımlar, yarınki büyük farkı yaratır.",
@@ -87,7 +76,7 @@ const firebaseConfig = {
         const navPastEntries = document.getElementById('navPastEntries');
         const navProgressCharts = document.getElementById('navProgressCharts');
         const motivationQuoteEl = document.getElementById('motivationQuote');
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        // currentYear initApp içinde ayarlanacak
 
         // --- UTILITY FUNCTIONS ---
         function formatDate(dateString) {
@@ -99,7 +88,7 @@ const firebaseConfig = {
             if (!startTime || !endTime) return { hours: 0, minutes: 0 };
             const start = new Date(`1970-01-01T${startTime}:00`);
             let end = new Date(`1970-01-01T${endTime}:00`);
-            if (end < start) { // Assumes fasting crosses midnight
+            if (end < start) { 
                 end.setDate(end.getDate() + 1);
             }
             const diffMs = end - start;
@@ -108,12 +97,23 @@ const firebaseConfig = {
             return { hours: diffHours, minutes: diffMinutes };
         }
 
-        // --- DATA HANDLING ---
-        function saveEntries() {
-            localStorage.setItem('ketoTrackerEntries_v1', JSON.stringify(dailyEntries));
+        // --- DATA HANDLING (Firestore için güncellenecek bölümler) ---
+        function saveEntries(entryDataToSave) { // Fonksiyon Firestore'a tek bir kayıt gönderecek şekilde değiştirilebilir
+            // localStorage.setItem('ketoTrackerEntries_v1', JSON.stringify(dailyEntries)); // ESKİ KOD - YORUM SATIRI
+            console.log("saveEntries fonksiyonu Firestore'a veri kaydetmek için güncellenecek.", entryDataToSave);
+            // ÖRNEK Firestore kaydı (sonra detaylandırılacak):
+            // if (auth.currentUser && entryDataToSave) {
+            //   return db.collection('users').doc(auth.currentUser.uid).collection('entries').doc(entryDataToSave.date).set(entryDataToSave);
+            // } else {
+            //   console.error("Kullanıcı girişi yapılmamış veya kaydedilecek veri yok!");
+            //   return Promise.reject("Kullanıcı girişi yapılmamış veya kaydedilecek veri yok!");
+            // }
         }
 
         function getEntryForDate(date) {
+            // Bu fonksiyon, dailyEntries dizisi Firestore'dan doldurulduktan sonra çalışacak.
+            // Ya da doğrudan Firestore'dan belirli bir tarih için veri çekebilir.
+            // Şimdilik client-side dailyEntries dizisine bakıyor.
             return dailyEntries.find(entry => entry.date === date) || createNewEntry(date);
         }
         
@@ -133,25 +133,37 @@ const firebaseConfig = {
                 tuzAldim: false, tuzNot: '',
                 magnezyumAldim: false, magnezyumNot: '',
                 potasyumAldim: false, potasyumNot: '',
-                ruhHali: 3, // 1-5
-                enerjiSeviyesi: 3, // 1-5
+                ruhHali: 3, 
+                enerjiSeviyesi: 3, 
                 kendimiHissettim: '',
                 notlar: ''
             };
         }
 
         function updateOrAddEntry(entryData) {
+            // Bu fonksiyon, veriyi hem client-side `dailyEntries` dizisine ekler/günceller (arayüzün hızlı tepkisi için)
+            // hem de Firestore'a kaydeder.
             const index = dailyEntries.findIndex(e => e.date === entryData.date);
             if (index > -1) {
                 dailyEntries[index] = entryData;
             } else {
                 dailyEntries.push(entryData);
             }
-            dailyEntries.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date descending
-            saveEntries();
+            dailyEntries.sort((a, b) => new Date(b.date) - new Date(a.date)); 
+            
+            saveEntries(entryData) // Firestore'a kaydetmek için saveEntries'i çağır.
+                .then(() => {
+                    console.log("Veri Firestore'a başarıyla kaydedildi (veya güncellendi).");
+                    alert('Kayıt başarıyla güncellendi!'); // Kullanıcıya Firestore sonrası bilgi verilebilir.
+                })
+                .catch(error => {
+                    console.error("Firestore'a kaydederken hata oluştu: ", error);
+                    alert('Kayıt güncellenirken bir sorun oluştu. Lütfen internet bağlantınızı kontrol edin.');
+                });
+             // renderDailyEntry(); // Bu, handleFormSubmit içinde zaten çağrılıyor. Tekrar çağırmaya gerek yok.
         }
 
-        // --- RENDERING VIEWS ---
+        // --- RENDERING VIEWS (Fonksiyonların içindeki HTML oluşturma kısımları aynı kalır) ---
         function renderDailyEntry() {
             currentView = 'DailyEntry';
             setActiveNav(navDailyEntry);
@@ -274,72 +286,101 @@ const firebaseConfig = {
                 </div>
             `;
             addDailyEntryListeners();
-            updateOrucDisplay(); // Initial call
+            updateOrucDisplay(); 
         }
 
         function addDailyEntryListeners() {
-            document.getElementById('entryDate').addEventListener('change', (e) => {
-                selectedDate = e.target.value;
-                renderDailyEntry(); // Re-render with new date's data
-            });
+            // Dinamik olarak oluşturulan form için event listener'ları burada yeniden eklememiz GEREKEBİLİR.
+            // Ancak renderDailyEntry her çağrıldığında içindeki form ve elementler yeniden oluştuğu için,
+            // listener'ları renderDailyEntry çağrısından sonra eklemek daha güvenli olabilir.
+            // Şimdilik, form submit ve date change dışındakiler renderDailyEntry içinde olduğu için sorun olmayabilir.
+            // Test edip göreceğiz.
+            const entryDateInput = document.getElementById('entryDate');
+            if (entryDateInput) {
+                entryDateInput.addEventListener('change', (e) => {
+                    selectedDate = e.target.value;
+                    renderDailyEntry(); 
+                });
+            }
 
             const form = document.getElementById('dailyEntryForm');
-            form.addEventListener('submit', handleFormSubmit);
+            if (form) {
+                form.addEventListener('submit', handleFormSubmit);
+            }
 
-            // Oruc süresi hesaplama
             const orucBaslangicEl = document.getElementById('orucBaslangic');
             const orucBitisEl = document.getElementById('orucBitis');
-            orucBaslangicEl.addEventListener('change', updateOrucDisplay);
-            orucBitisEl.addEventListener('change', updateOrucDisplay);
+            if(orucBaslangicEl) orucBaslangicEl.addEventListener('change', updateOrucDisplay);
+            if(orucBitisEl) orucBitisEl.addEventListener('change', updateOrucDisplay);
             
-            // Hedef Oruç Custom Input
             const hedefOrucSelect = document.getElementById('hedefOruc');
             const hedefOrucCustomInput = document.getElementById('hedefOrucCustom');
-            hedefOrucSelect.addEventListener('change', () => {
-                hedefOrucCustomInput.classList.toggle('hidden', hedefOrucSelect.value !== 'custom');
-                if (hedefOrucSelect.value !== 'custom') hedefOrucCustomInput.value = '';
-            });
-
-            // Elektrolit notları gösterme/gizleme
-            ['tuz', 'magnezyum', 'potasyum'].forEach(el => {
-                document.getElementById(`${el}Aldim`).addEventListener('change', (e) => {
-                    document.getElementById(`${el}Not`).classList.toggle('hidden', !e.target.checked);
-                     if(!e.target.checked) document.getElementById(`${el}Not`).value = '';
+            if(hedefOrucSelect) {
+                hedefOrucSelect.addEventListener('change', () => {
+                    hedefOrucCustomInput.classList.toggle('hidden', hedefOrucSelect.value !== 'custom');
+                    if (hedefOrucSelect.value !== 'custom') hedefOrucCustomInput.value = '';
                 });
-            });
-            
-            // Range slider değerlerini gösterme
-            document.getElementById('ruhHali').addEventListener('input', (e) => {
-                document.getElementById('ruhHaliValue').textContent = e.target.value;
-            });
-            document.getElementById('enerjiSeviyesi').addEventListener('input', (e) => {
-                document.getElementById('enerjiSeviyesiValue').textContent = e.target.value;
-            });
+            }
 
-            // Öğün Ekleme/Kaldırma
-            document.getElementById('addMealBtn').addEventListener('click', addMeal);
-            document.getElementById('mealsContainer').addEventListener('click', function(e) {
-                if (e.target.classList.contains('remove-meal-btn')) {
-                    removeMeal(parseInt(e.target.dataset.index));
+            ['tuz', 'magnezyum', 'potasyum'].forEach(el => {
+                const checkbox = document.getElementById(`${el}Aldim`);
+                const notInput = document.getElementById(`${el}Not`);
+                if(checkbox && notInput) {
+                    checkbox.addEventListener('change', (e) => {
+                        notInput.classList.toggle('hidden', !e.target.checked);
+                        if(!e.target.checked) notInput.value = '';
+                    });
                 }
             });
+            
+            const ruhHaliInput = document.getElementById('ruhHali');
+            const ruhHaliValueEl = document.getElementById('ruhHaliValue');
+            if(ruhHaliInput && ruhHaliValueEl) {
+                ruhHaliInput.addEventListener('input', (e) => {
+                    ruhHaliValueEl.textContent = e.target.value;
+                });
+            }
+
+            const enerjiSeviyesiInput = document.getElementById('enerjiSeviyesi');
+            const enerjiSeviyesiValueEl = document.getElementById('enerjiSeviyesiValue');
+            if(enerjiSeviyesiInput && enerjiSeviyesiValueEl) {
+                enerjiSeviyesiInput.addEventListener('input', (e) => {
+                    enerjiSeviyesiValueEl.textContent = e.target.value;
+                });
+            }
+
+            const addMealBtn = document.getElementById('addMealBtn');
+            if(addMealBtn) addMealBtn.addEventListener('click', addMeal);
+
+            const mealsContainer = document.getElementById('mealsContainer');
+            if(mealsContainer) {
+                mealsContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-meal-btn')) {
+                        removeMeal(parseInt(e.target.dataset.index));
+                    }
+                });
+            }
         }
         
         function updateOrucDisplay() {
-            const baslangic = document.getElementById('orucBaslangic').value;
-            const bitis = document.getElementById('orucBitis').value;
-            const duration = calculateDuration(baslangic, bitis);
-            document.getElementById('toplamOrucSuresi').textContent = `${duration.hours} saat ${duration.minutes} dakika`;
+            const baslangic = document.getElementById('orucBaslangic')?.value; // Optional chaining
+            const bitis = document.getElementById('orucBitis')?.value;       // Optional chaining
+            const toplamOrucSuresiEl = document.getElementById('toplamOrucSuresi');
+            if(baslangic && bitis && toplamOrucSuresiEl){
+                const duration = calculateDuration(baslangic, bitis);
+                toplamOrucSuresiEl.textContent = `${duration.hours} saat ${duration.minutes} dakika`;
+            } else if (toplamOrucSuresiEl) {
+                const entry = getEntryForDate(selectedDate); // Eğer inputlar boşsa mevcut entry'den almayı dene
+                toplamOrucSuresiEl.textContent = `${entry.toplamOrucSaat || 0} saat ${entry.toplamOrucDakika || 0} dakika`;
+            }
         }
 
         function addMeal() {
             const entry = getEntryForDate(selectedDate);
             entry.yenilenler.push({ protein: '', yag: '', sebze: '', karbonhidrat: '', saat: '' });
-            // Re-render only the meals part or the whole form
-            // For simplicity, re-rendering the whole form for now ensures data consistency
             const currentScrollPos = window.scrollY;
             renderDailyEntry();
-            window.scrollTo(0, currentScrollPos); // Maintain scroll position
+            window.scrollTo(0, currentScrollPos); 
         }
 
         function removeMeal(index) {
@@ -354,7 +395,6 @@ const firebaseConfig = {
 
         function handleFormSubmit(event) {
             event.preventDefault();
-            const formData = new FormData(event.target); // Not directly used, collecting manually
             
             const hedefOrucSelected = document.getElementById('hedefOruc').value;
             const hedefOrucValue = hedefOrucSelected === 'custom' ? document.getElementById('hedefOrucCustom').value : hedefOrucSelected;
@@ -397,20 +437,22 @@ const firebaseConfig = {
                 kendimiHissettim: document.getElementById('kendimiHissettim').value,
                 notlar: document.getElementById('notlar').value
             };
-            updateOrAddEntry(entryData);
-            alert('Kayıt başarıyla güncellendi!');
-            renderDailyEntry(); // Refresh to show potentially sorted/updated data if needed
+            updateOrAddEntry(entryData); // Bu artık Firestore'a yazmayı deneyecek (veya console'a log atacak)
+            // alert('Kayıt başarıyla güncellendi!'); // Bu satır updateOrAddEntry içine taşındı (Firestore sonrası için)
+            renderDailyEntry(); 
         }
 
         function renderPastEntries() {
             currentView = 'PastEntries';
             setActiveNav(navPastEntries);
+            // dailyEntries Firestore'dan yüklendikten sonra bu fonksiyon anlamlı olacak.
+            // Şimdilik, eğer dailyEntries boşsa mesaj gösterecek.
             if (dailyEntries.length === 0) {
                 appContent.innerHTML = `
                     <div class="bg-white p-6 shadow-xl rounded-lg text-center">
                         <h2 class="text-2xl font-semibold text-indigo-700 mb-3">Geçmiş Kayıtlar</h2>
-                        <p class="text-slate-600 mb-2">Henüz kaydedilmiş bir gününüz bulunmuyor.</p>
-                        <p class="text-sm text-slate-500">"Günlük Kayıt" bölümünden veri girişi yapmaya başlayabilirsiniz.</p>
+                        <p class="text-slate-600 mb-2">Henüz Firebase'den yüklenmiş veya kaydedilmiş bir gününüz bulunmuyor.</p>
+                        <p class="text-sm text-slate-500">"Günlük Kayıt" bölümünden veri girişi yapmayı deneyebilirsiniz.</p>
                     </div>`;
                 return;
             }
@@ -437,7 +479,7 @@ const firebaseConfig = {
             document.querySelectorAll('.past-entry-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     selectedDate = e.currentTarget.dataset.date;
-                    renderDailyEntry(); // Switch to daily entry view for the selected date
+                    renderDailyEntry(); 
                 });
             });
         }
@@ -445,18 +487,17 @@ const firebaseConfig = {
         function renderProgressCharts() {
             currentView = 'ProgressCharts';
             setActiveNav(navProgressCharts);
-
-            if (dailyEntries.length < 2) { // Need at least 2 data points for a meaningful chart
+            // dailyEntries Firestore'dan yüklendikten sonra bu fonksiyon anlamlı olacak.
+            if (dailyEntries.length < 2) { 
                  appContent.innerHTML = `
                     <div class="bg-white p-6 shadow-xl rounded-lg text-center">
                         <h2 class="text-2xl font-semibold text-indigo-700 mb-3">İlerleme Grafikleri</h2>
-                        <p class="text-slate-600 mb-2">Grafikleri görüntülemek için en az 2 günlük veri girişi yapmanız gerekmektedir.</p>
+                        <p class="text-slate-600 mb-2">Grafikleri görüntülemek için en az 2 günlük Firebase verisi gerekmektedir.</p>
                         <p class="text-sm text-slate-500">"Günlük Kayıt" bölümünden veri girişi yapmaya devam edin.</p>
                     </div>`;
                 return;
             }
             
-            // Destroy existing charts before rendering new ones
             Object.values(charts).forEach(chart => chart.destroy());
             charts = {};
 
@@ -488,31 +529,31 @@ const firebaseConfig = {
                 </div>
             `;
 
-            // Prepare data for charts (sorted by date ascending for charts)
             const sortedEntries = [...dailyEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
             const labels = sortedEntries.map(e => new Date(e.date).toLocaleDateString('tr-TR', { day:'2-digit', month:'short'}));
             
-            // Fasting Hours Chart
             const fastingData = sortedEntries.map(e => parseFloat(e.toplamOrucSaat || 0) + parseFloat(e.toplamOrucDakika || 0)/60);
             createChart('fastingHoursChart', 'line', labels, fastingData, 'Oruç Süresi (Saat)', 'rgba(79, 70, 229, 0.7)', 'rgba(79, 70, 229, 1)');
 
-            // Mood Chart
             const moodData = sortedEntries.map(e => parseInt(e.ruhHali));
-            createChart('moodChart', 'line', labels, moodData, 'Ruh Hali', 'rgba(16, 185, 129, 0.7)', 'rgba(16, 185, 129, 1)'); // Emerald
+            createChart('moodChart', 'line', labels, moodData, 'Ruh Hali', 'rgba(16, 185, 129, 0.7)', 'rgba(16, 185, 129, 1)'); 
 
-            // Energy Chart
             const energyData = sortedEntries.map(e => parseInt(e.enerjiSeviyesi));
-            createChart('energyChart', 'line', labels, energyData, 'Enerji Seviyesi', 'rgba(217, 119, 6, 0.7)', 'rgba(217, 119, 6, 1)'); // Amber
+            createChart('energyChart', 'line', labels, energyData, 'Enerji Seviyesi', 'rgba(217, 119, 6, 0.7)', 'rgba(217, 119, 6, 1)'); 
 
-            // Water Intake Chart (if data exists)
             if (dailyEntries.some(e => e.suLitre)) {
                 const waterData = sortedEntries.map(e => parseFloat(e.suLitre || 0));
-                 createChart('waterIntakeChart', 'bar', labels, waterData, 'Su Tüketimi (Litre)', 'rgba(59, 130, 246, 0.7)', 'rgba(59, 130, 246, 1)'); // Blue
+                 createChart('waterIntakeChart', 'bar', labels, waterData, 'Su Tüketimi (Litre)', 'rgba(59, 130, 246, 0.7)', 'rgba(59, 130, 246, 1)'); 
             }
         }
         
         function createChart(canvasId, type, labels, data, label, bgColor, borderColor) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Chart canvas with id ${canvasId} not found.`);
+                return;
+            }
+            const ctx = canvas.getContext('2d');
             charts[canvasId] = new Chart(ctx, {
                 type: type,
                 data: {
@@ -523,8 +564,8 @@ const firebaseConfig = {
                         backgroundColor: bgColor,
                         borderColor: borderColor,
                         borderWidth: 2,
-                        tension: 0.1, // For line charts
-                        fill: type === 'line' ? {target: 'origin', above: bgColor.replace('0.7', '0.3')} : false, // Fill area for line charts
+                        tension: 0.1, 
+                        fill: type === 'line' ? {target: 'origin', above: bgColor.replace('0.7', '0.3')} : false, 
                         pointRadius: 3,
                         pointHoverRadius: 5
                     }]
@@ -534,9 +575,9 @@ const firebaseConfig = {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: type === 'bar', // Start y-axis at zero for bar charts
-                            ticks: { color: '#4B5563' }, // Gray-600
-                            grid: { color: '#E5E7EB' } // Gray-200
+                            beginAtZero: type === 'bar', 
+                            ticks: { color: '#4B5563' }, 
+                            grid: { color: '#E5E7EB' } 
                         },
                         x: {
                             ticks: { color: '#4B5563' },
@@ -545,12 +586,12 @@ const firebaseConfig = {
                     },
                     plugins: {
                         legend: {
-                            labels: { color: '#374151' } // Gray-700
+                            labels: { color: '#374151' } 
                         },
                         tooltip: {
-                            backgroundColor: '#1F2937', // Gray-800
-                            titleColor: '#F9FAFB', // Gray-50
-                            bodyColor: '#F3F4F6', // Gray-100
+                            backgroundColor: '#1F2937', 
+                            titleColor: '#F9FAFB', 
+                            bodyColor: '#F3F4F6', 
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -558,7 +599,7 @@ const firebaseConfig = {
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(1); // One decimal place for hours
+                                        label += context.parsed.y.toFixed(1); 
                                     }
                                     return label;
                                 }
@@ -572,22 +613,33 @@ const firebaseConfig = {
         // --- NAVIGATION ---
         function setActiveNav(activeButton) {
             [navDailyEntry, navPastEntries, navProgressCharts].forEach(button => {
-                button.classList.remove('active', 'bg-indigo-500', 'text-white');
-                button.classList.add('text-slate-700');
+                if(button) { // Butonların varlığını kontrol et
+                    button.classList.remove('active', 'bg-indigo-500', 'text-white');
+                    button.classList.add('text-slate-700');
+                }
             });
-            activeButton.classList.add('active', 'bg-indigo-500', 'text-white');
-            activeButton.classList.remove('text-slate-700');
+            if(activeButton) { // Aktif butonun varlığını kontrol et
+                activeButton.classList.add('active', 'bg-indigo-500', 'text-white');
+                activeButton.classList.remove('text-slate-700');
+            }
         }
 
-        navDailyEntry.addEventListener('click', renderDailyEntry);
-        navPastEntries.addEventListener('click', renderPastEntries);
-        navProgressCharts.addEventListener('click', renderProgressCharts);
+        if(navDailyEntry) navDailyEntry.addEventListener('click', renderDailyEntry);
+        if(navPastEntries) navPastEntries.addEventListener('click', renderPastEntries);
+        if(navProgressCharts) navProgressCharts.addEventListener('click', renderProgressCharts);
 
         // --- INITIALIZATION ---
         function initApp() {
-            const randomIndex = Math.floor(Math.random() * motivationQuotes.length);
-            motivationQuoteEl.textContent = motivationQuotes[randomIndex];
-            renderDailyEntry(); // Initial view
+            // DOM elementlerinin varlığını kontrol et
+            const currentYearEl = document.getElementById('currentYear');
+            const motivationQuoteElLocal = document.getElementById('motivationQuote'); // Yerel değişken, global ile karışmasın diye
+
+            if(currentYearEl) currentYearEl.textContent = new Date().getFullYear();
+            if(motivationQuoteElLocal && motivationQuotes.length > 0) {
+                const randomIndex = Math.floor(Math.random() * motivationQuotes.length);
+                motivationQuoteElLocal.textContent = motivationQuotes[randomIndex];
+            }
+            renderDailyEntry(); 
         }
 
         initApp();
