@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css">
+    <title>Keto & Aralıklı Oruç Takip Uygulaması</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices:
+        - Tarih: Date input. Goal: Kayıt tarihi seçimi. Interaction: Takvimden seçme. Justification: Kullanıcı dostu tarih girişi.
+        - Oruç Süresi: Time inputs, radio/select. Goal: Oruç takibi. Interaction: Süre otomatik hesaplama. Justification: Manuel hesaplama hatasını önler. Chart: Fasting hours (line/bar) in Progress.
+        - Karbonhidrat: Checkboxes, text input. Goal: Karbonhidrat ve ketozis takibi. Justification: Durum hızlı işaretleme.
+        - Yenilenler: Text inputs/areas. Goal: Yemek kaydı. Interaction: Dinamik öğün ekleme (opsiyonel, basit tutulacak). Justification: Detaylı kayıt imkanı.
+        - Su/Elektrolit: Number input/buttons, checkboxes. Goal: Sıvı ve mineral takibi. Justification: Kolay miktar girişi.
+        - Ruh Hali/Enerji: Range sliders/radio buttons. Goal: Öznel durum takibi. Interaction: Grafiksel gösterim. Chart: Mood/Energy over time (line) in Progress. Justification: Trend analizi.
+        - Notlar: Textarea. Goal: Ek bilgi kaydı. Justification: Esnek not alanı.
+        - Kütüphane: Chart.js (Canvas tabanlı grafikler için).
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { transition: background-color 0.3s, color 0.3s; }
+        .nav-link.active { background-color: #6366F1; color: white; } /* Indigo-500 */
+        .nav-link:not(.active):hover { background-color: #E0E7FF; } /* Indigo-100 */
+        .form-input, .form-select, .form-textarea {
+            border-radius: 0.375rem;
+            border-width: 1px;
+            border-color: #D1D5DB; /* Gray-300 */
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #6366F1; /* Indigo-500 */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Indigo-500 with opacity */
+            outline: none;
+        }
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .btn-primary { background-color: #4F46E5; color: white; } /* Indigo-600 */
+        .btn-primary:hover { background-color: #4338CA; } /* Indigo-700 */
+        .btn-secondary { background-color: #6B7280; color: white; } /* Gray-500 */
+        .btn-secondary:hover { background-color: #4B5563; } /* Gray-600 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Tailwind max-w-2xl */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .chart-container { height: 350px; }
+        }
+        /* Custom scrollbar for Past Entries */
+        .past-entries-list::-webkit-scrollbar { width: 8px; }
+        .past-entries-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .past-entries-list::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .past-entries-list::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-indigo-600">Keto & Aralıklı Oruç Takipçisi</h1>
+            <p class="text-lg text-slate-600 mt-2">Sağlıklı yaşam yolculuğunuzda size yardımcı olmak için tasarlandı.</p>
+        </header>
+
+        <nav class="mb-8 bg-white shadow-md rounded-lg p-2 flex justify-center space-x-2">
+            <button id="navDailyEntry" class="nav-link px-4 py-2 rounded-md font-medium text-slate-700">📝 Günlük Kayıt</button>
+            <button id="navPastEntries" class="nav-link px-4 py-2 rounded-md font-medium text-slate-700">🗓️ Geçmiş Kayıtlar</button>
+            <button id="navProgressCharts" class="nav-link px-4 py-2 rounded-md font-medium text-slate-700">📊 İlerleme Grafikleri</button>
+        </nav>
+
+        <main id="appContent">
+            </main>
+
+        <footer class="mt-12 text-center text-sm text-slate-500">
+            <p>&copy; <span id="currentYear"></span> İnteraktif Takip Uygulaması. Tüm hakları saklıdır.</p>
+            <p class="mt-1">✨ <span id="motivationQuote"></span> ✨</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- APPLICATION STATE AND DATA ---
+        let dailyEntries = JSON.parse(localStorage.getItem('ketoTrackerEntries_v1')) || [];
+        let currentView = 'DailyEntry';
+        let selectedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        let charts = {}; // To store Chart.js instances
+
+        const motivationQuotes = [
+            "Bugün attığın küçük adımlar, yarınki büyük farkı yaratır.",
+            "Sağlığına yaptığın yatırım, en değerli kazancındır.",
+            "Unutma, en iyi proje sensin!",
+            "Her sağlıklı seçim, hedefine bir adım daha yaklaşmaktır.",
+            "Vazgeçmek istediğinde, neden başladığını hatırla."
+        ];
+
+        // --- DOM ELEMENTS ---
+        const appContent = document.getElementById('appContent');
+        const navDailyEntry = document.getElementById('navDailyEntry');
+        const navPastEntries = document.getElementById('navPastEntries');
+        const navProgressCharts = document.getElementById('navProgressCharts');
+        const motivationQuoteEl = document.getElementById('motivationQuote');
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // --- UTILITY FUNCTIONS ---
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            return new Date(dateString + 'T00:00:00').toLocaleDateString('tr-TR', options);
+        }
+
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return { hours: 0, minutes: 0 };
+            const start = new Date(`1970-01-01T${startTime}:00`);
+            let end = new Date(`1970-01-01T${endTime}:00`);
+            if (end < start) { // Assumes fasting crosses midnight
+                end.setDate(end.getDate() + 1);
+            }
+            const diffMs = end - start;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            return { hours: diffHours, minutes: diffMinutes };
+        }
+
+        // --- DATA HANDLING ---
+        function saveEntries() {
+            localStorage.setItem('ketoTrackerEntries_v1', JSON.stringify(dailyEntries));
+        }
+
+        function getEntryForDate(date) {
+            return dailyEntries.find(entry => entry.date === date) || createNewEntry(date);
+        }
+        
+        function createNewEntry(date) {
+            return {
+                date: date,
+                hedefOruc: 16,
+                orucBaslangic: '',
+                orucBitis: '',
+                toplamOrucSaat: 0,
+                toplamOrucDakika: 0,
+                carbAzaltildi: false,
+                ketoyaGecildi: false,
+                ketozisNotlar: '',
+                yenilenler: [{ protein: '', yag: '', sebze: '', karbonhidrat: '', saat: '' }],
+                suLitre: '',
+                tuzAldim: false, tuzNot: '',
+                magnezyumAldim: false, magnezyumNot: '',
+                potasyumAldim: false, potasyumNot: '',
+                ruhHali: 3, // 1-5
+                enerjiSeviyesi: 3, // 1-5
+                kendimiHissettim: '',
+                notlar: ''
+            };
+        }
+
+        function updateOrAddEntry(entryData) {
+            const index = dailyEntries.findIndex(e => e.date === entryData.date);
+            if (index > -1) {
+                dailyEntries[index] = entryData;
+            } else {
+                dailyEntries.push(entryData);
+            }
+            dailyEntries.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date descending
+            saveEntries();
+        }
+
+        // --- RENDERING VIEWS ---
+        function renderDailyEntry() {
+            currentView = 'DailyEntry';
+            setActiveNav(navDailyEntry);
+            const entry = getEntryForDate(selectedDate);
+
+            let mealsHtml = entry.yenilenler.map((meal, index) => `
+                <div class="border border-slate-200 p-3 rounded-md mb-3 meal-entry">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-md font-semibold text-indigo-600">Öğün ${index + 1}</h4>
+                        ${entry.yenilenler.length > 1 ? `<button type="button" class="text-red-500 hover:text-red-700 remove-meal-btn" data-index="${index}">✖ Kaldır</button>` : ''}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">Saat:</label><input type="time" class="form-input meal-saat" value="${meal.saat || ''}"></div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">Protein:</label><input type="text" class="form-input meal-protein" placeholder="Örn: Tavuk göğsü, yumurta" value="${meal.protein || ''}"></div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">Yağ:</label><input type="text" class="form-input meal-yag" placeholder="Örn: Zeytinyağı, avokado" value="${meal.yag || ''}"></div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">Sebze:</label><input type="text" class="form-input meal-sebze" placeholder="Örn: Brokoli, ıspanak" value="${meal.sebze || ''}"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-slate-700 mb-1">Karbonhidrat (Kaynak ve Miktar):</label><input type="text" class="form-input meal-karbonhidrat" placeholder="Örn: 1/4 avokado, 5g" value="${meal.karbonhidrat || ''}"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            appContent.innerHTML = `
+                <div class="bg-white p-6 shadow-xl rounded-lg">
+                    <div class="mb-6 pb-4 border-b border-slate-200">
+                        <h2 class="text-2xl font-semibold text-indigo-700 mb-1">Günlük Kayıt Girişi</h2>
+                        <p class="text-sm text-slate-500">Bu bölümde, seçtiğiniz güne ait beslenme, oruç ve genel durum bilgilerinizi girebilirsiniz. Girdiğiniz veriler, ilerlemenizi takip etmenize yardımcı olacaktır.</p>
+                    </div>
+                    <form id="dailyEntryForm">
+                        <div class="mb-4">
+                            <label for="entryDate" class="block text-sm font-medium text-slate-700 mb-1">Tarih Seçin:</label>
+                            <input type="date" id="entryDate" class="form-input w-auto" value="${selectedDate}">
+                        </div>
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">1. Günlük Oruç Süresi</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="hedefOruc" class="block text-sm font-medium text-slate-700 mb-1">Hedef Oruç Süresi:</label>
+                                <select id="hedefOruc" class="form-select">
+                                    <option value="16" ${entry.hedefOruc == 16 ? 'selected' : ''}>16 Saat</option>
+                                    <option value="18" ${entry.hedefOruc == 18 ? 'selected' : ''}>18 Saat</option>
+                                    <option value="20" ${entry.hedefOruc == 20 ? 'selected' : ''}>20 Saat</option>
+                                    <option value="custom" ${![16,18,20].includes(parseInt(entry.hedefOruc)) && entry.hedefOruc ? 'selected' : ''}>Diğer</option>
+                                </select>
+                                <input type="number" id="hedefOrucCustom" class="form-input mt-1 ${![16,18,20].includes(parseInt(entry.hedefOruc)) && entry.hedefOruc ? '' : 'hidden'}" placeholder="Saat girin" value="${entry.hedefOruc && ![16,18,20].includes(parseInt(entry.hedefOruc)) ? entry.hedefOruc : ''}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Gerçekleşen Oruç:</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label for="orucBaslangic" class="text-xs text-slate-600">Başlangıç:</label><input type="time" id="orucBaslangic" class="form-input" value="${entry.orucBaslangic || ''}"></div>
+                                    <div><label for="orucBitis" class="text-xs text-slate-600">Bitiş:</label><input type="time" id="orucBitis" class="form-input" value="${entry.orucBitis || ''}"></div>
+                                </div>
+                                <p class="text-sm text-slate-600 mt-1">Toplam: <span id="toplamOrucSuresi">${entry.toplamOrucSaat || 0} saat ${entry.toplamOrucDakika || 0} dakika</span></p>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">2. Karbonhidrat Durumu</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="carbAzaltildi" class="form-checkbox h-5 w-5 text-indigo-600 rounded" ${entry.carbAzaltildi ? 'checked' : ''}>
+                                <span class="ml-2 text-slate-700">Karbonhidrat Alımı Azaltıldı</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="ketoyaGecildi" class="form-checkbox h-5 w-5 text-indigo-600 rounded" ${entry.ketoyaGecildi ? 'checked' : ''}>
+                                <span class="ml-2 text-slate-700">Ketoya Geçildi / Ketozis Belirtileri Var</span>
+                            </label>
+                            <div>
+                                <label for="ketozisNotlar" class="block text-sm font-medium text-slate-700 mb-1">Ketozis Belirtileri/Notları:</label>
+                                <input type="text" id="ketozisNotlar" class="form-input" placeholder="Örn: Enerji artışı, ağız kuruluğu" value="${entry.ketozisNotlar || ''}">
+                            </div>
+                        </div>
+                        
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">3. Yenilenler</h3>
+                        <div id="mealsContainer">${mealsHtml}</div>
+                        <button type="button" id="addMealBtn" class="btn btn-secondary text-sm mt-2">🍳 Öğün Ekle</button>
+
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">4. Su ve Elektrolit Takibi</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="suLitre" class="block text-sm font-medium text-slate-700 mb-1">Su Tüketimi (Litre):</label>
+                                <input type="number" id="suLitre" class="form-input" step="0.1" placeholder="Örn: 2.5" value="${entry.suLitre || ''}">
+                            </div>
+                            <div class="space-y-2">
+                                <p class="text-sm font-medium text-slate-700">Elektrolitler:</p>
+                                <label class="flex items-center"><input type="checkbox" id="tuzAldim" class="form-checkbox h-5 w-5 text-indigo-600 rounded" ${entry.tuzAldim ? 'checked' : ''}><span class="ml-2 text-slate-700">Tuz (Sodyum)</span></label>
+                                <input type="text" id="tuzNot" class="form-input text-sm ${entry.tuzAldim ? '' : 'hidden'}" placeholder="Kaynak/Miktar (Örn: Himalaya tuzu, 1 çay kaşığı)" value="${entry.tuzNot || ''}">
+                                
+                                <label class="flex items-center mt-1"><input type="checkbox" id="magnezyumAldim" class="form-checkbox h-5 w-5 text-indigo-600 rounded" ${entry.magnezyumAldim ? 'checked' : ''}><span class="ml-2 text-slate-700">Magnezyum</span></label>
+                                <input type="text" id="magnezyumNot" class="form-input text-sm ${entry.magnezyumAldim ? '' : 'hidden'}" placeholder="Kaynak/Miktar (Örn: Sitrat, 200mg)" value="${entry.magnezyumNot || ''}">
+
+                                <label class="flex items-center mt-1"><input type="checkbox" id="potasyumAldim" class="form-checkbox h-5 w-5 text-indigo-600 rounded" ${entry.potasyumAldim ? 'checked' : ''}><span class="ml-2 text-slate-700">Potasyum</span></label>
+                                <input type="text" id="potasyumNot" class="form-input text-sm ${entry.potasyumAldim ? '' : 'hidden'}" placeholder="Kaynak/Miktar (Örn: Avokado, takviye)" value="${entry.potasyumNot || ''}">
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">5. Günlük Ruh Hali & Enerji Durumu</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ruhHali" class="block text-sm font-medium text-slate-700 mb-1">Ruh Halim (1 Düşük - 5 Yüksek): <span id="ruhHaliValue">${entry.ruhHali}</span></label>
+                                <input type="range" id="ruhHali" min="1" max="5" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" value="${entry.ruhHali}">
+                            </div>
+                            <div>
+                                <label for="enerjiSeviyesi" class="block text-sm font-medium text-slate-700 mb-1">Enerji Seviyem (1 Düşük - 5 Yüksek): <span id="enerjiSeviyesiValue">${entry.enerjiSeviyesi}</span></label>
+                                <input type="range" id="enerjiSeviyesi" min="1" max="5" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" value="${entry.enerjiSeviyesi}">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="kendimiHissettim" class="block text-sm font-medium text-slate-700 mb-1">Kendimi Nasıl Hissettim (Kısaca):</label>
+                            <textarea id="kendimiHissettim" rows="2" class="form-textarea" placeholder="Bugünkü genel hisleriniz...">${entry.kendimiHissettim || ''}</textarea>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-indigo-600 border-b border-indigo-200 pb-2 mb-4 mt-6">6. Notlar</h3>
+                        <div>
+                            <label for="notlar" class="block text-sm font-medium text-slate-700 mb-1">Ek Notlarınız:</label>
+                            <textarea id="notlar" rows="3" class="form-textarea" placeholder="Baş ağrısı, uyku kalitesi, egzersiz performansı vb.">${entry.notlar || ''}</textarea>
+                        </div>
+
+                        <div class="mt-8 text-center">
+                            <button type="submit" class="btn btn-primary">💾 Kaydı Güncelle</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            addDailyEntryListeners();
+            updateOrucDisplay(); // Initial call
+        }
+
+        function addDailyEntryListeners() {
+            document.getElementById('entryDate').addEventListener('change', (e) => {
+                selectedDate = e.target.value;
+                renderDailyEntry(); // Re-render with new date's data
+            });
+
+            const form = document.getElementById('dailyEntryForm');
+            form.addEventListener('submit', handleFormSubmit);
+
+            // Oruc süresi hesaplama
+            const orucBaslangicEl = document.getElementById('orucBaslangic');
+            const orucBitisEl = document.getElementById('orucBitis');
+            orucBaslangicEl.addEventListener('change', updateOrucDisplay);
+            orucBitisEl.addEventListener('change', updateOrucDisplay);
+            
+            // Hedef Oruç Custom Input
+            const hedefOrucSelect = document.getElementById('hedefOruc');
+            const hedefOrucCustomInput = document.getElementById('hedefOrucCustom');
+            hedefOrucSelect.addEventListener('change', () => {
+                hedefOrucCustomInput.classList.toggle('hidden', hedefOrucSelect.value !== 'custom');
+                if (hedefOrucSelect.value !== 'custom') hedefOrucCustomInput.value = '';
+            });
+
+            // Elektrolit notları gösterme/gizleme
+            ['tuz', 'magnezyum', 'potasyum'].forEach(el => {
+                document.getElementById(`${el}Aldim`).addEventListener('change', (e) => {
+                    document.getElementById(`${el}Not`).classList.toggle('hidden', !e.target.checked);
+                     if(!e.target.checked) document.getElementById(`${el}Not`).value = '';
+                });
+            });
+            
+            // Range slider değerlerini gösterme
+            document.getElementById('ruhHali').addEventListener('input', (e) => {
+                document.getElementById('ruhHaliValue').textContent = e.target.value;
+            });
+            document.getElementById('enerjiSeviyesi').addEventListener('input', (e) => {
+                document.getElementById('enerjiSeviyesiValue').textContent = e.target.value;
+            });
+
+            // Öğün Ekleme/Kaldırma
+            document.getElementById('addMealBtn').addEventListener('click', addMeal);
+            document.getElementById('mealsContainer').addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-meal-btn')) {
+                    removeMeal(parseInt(e.target.dataset.index));
+                }
+            });
+        }
+        
+        function updateOrucDisplay() {
+            const baslangic = document.getElementById('orucBaslangic').value;
+            const bitis = document.getElementById('orucBitis').value;
+            const duration = calculateDuration(baslangic, bitis);
+            document.getElementById('toplamOrucSuresi').textContent = `${duration.hours} saat ${duration.minutes} dakika`;
+        }
+
+        function addMeal() {
+            const entry = getEntryForDate(selectedDate);
+            entry.yenilenler.push({ protein: '', yag: '', sebze: '', karbonhidrat: '', saat: '' });
+            // Re-render only the meals part or the whole form
+            // For simplicity, re-rendering the whole form for now ensures data consistency
+            const currentScrollPos = window.scrollY;
+            renderDailyEntry();
+            window.scrollTo(0, currentScrollPos); // Maintain scroll position
+        }
+
+        function removeMeal(index) {
+            const entry = getEntryForDate(selectedDate);
+            if (entry.yenilenler.length > 1) {
+                entry.yenilenler.splice(index, 1);
+                const currentScrollPos = window.scrollY;
+                renderDailyEntry();
+                window.scrollTo(0, currentScrollPos);
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target); // Not directly used, collecting manually
+            
+            const hedefOrucSelected = document.getElementById('hedefOruc').value;
+            const hedefOrucValue = hedefOrucSelected === 'custom' ? document.getElementById('hedefOrucCustom').value : hedefOrucSelected;
+
+            const orucBaslangic = document.getElementById('orucBaslangic').value;
+            const orucBitis = document.getElementById('orucBitis').value;
+            const orucDuration = calculateDuration(orucBaslangic, orucBitis);
+
+            const mealsData = [];
+            document.querySelectorAll('#mealsContainer .meal-entry').forEach(mealEl => {
+                mealsData.push({
+                    saat: mealEl.querySelector('.meal-saat').value,
+                    protein: mealEl.querySelector('.meal-protein').value,
+                    yag: mealEl.querySelector('.meal-yag').value,
+                    sebze: mealEl.querySelector('.meal-sebze').value,
+                    karbonhidrat: mealEl.querySelector('.meal-karbonhidrat').value,
+                });
+            });
+
+            const entryData = {
+                date: selectedDate,
+                hedefOruc: hedefOrucValue,
+                orucBaslangic: orucBaslangic,
+                orucBitis: orucBitis,
+                toplamOrucSaat: orucDuration.hours,
+                toplamOrucDakika: orucDuration.minutes,
+                carbAzaltildi: document.getElementById('carbAzaltildi').checked,
+                ketoyaGecildi: document.getElementById('ketoyaGecildi').checked,
+                ketozisNotlar: document.getElementById('ketozisNotlar').value,
+                yenilenler: mealsData,
+                suLitre: document.getElementById('suLitre').value,
+                tuzAldim: document.getElementById('tuzAldim').checked,
+                tuzNot: document.getElementById('tuzNot').value,
+                magnezyumAldim: document.getElementById('magnezyumAldim').checked,
+                magnezyumNot: document.getElementById('magnezyumNot').value,
+                potasyumAldim: document.getElementById('potasyumAldim').checked,
+                potasyumNot: document.getElementById('potasyumNot').value,
+                ruhHali: document.getElementById('ruhHali').value,
+                enerjiSeviyesi: document.getElementById('enerjiSeviyesi').value,
+                kendimiHissettim: document.getElementById('kendimiHissettim').value,
+                notlar: document.getElementById('notlar').value
+            };
+            updateOrAddEntry(entryData);
+            alert('Kayıt başarıyla güncellendi!');
+            renderDailyEntry(); // Refresh to show potentially sorted/updated data if needed
+        }
+
+        function renderPastEntries() {
+            currentView = 'PastEntries';
+            setActiveNav(navPastEntries);
+            if (dailyEntries.length === 0) {
+                appContent.innerHTML = `
+                    <div class="bg-white p-6 shadow-xl rounded-lg text-center">
+                        <h2 class="text-2xl font-semibold text-indigo-700 mb-3">Geçmiş Kayıtlar</h2>
+                        <p class="text-slate-600 mb-2">Henüz kaydedilmiş bir gününüz bulunmuyor.</p>
+                        <p class="text-sm text-slate-500">"Günlük Kayıt" bölümünden veri girişi yapmaya başlayabilirsiniz.</p>
+                    </div>`;
+                return;
+            }
+
+            const entriesHtml = dailyEntries.map(entry => `
+                <div class="bg-slate-100 p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer past-entry-item" data-date="${entry.date}">
+                    <h4 class="font-semibold text-indigo-600">${formatDate(entry.date)}</h4>
+                    <p class="text-sm text-slate-500">Oruç: ${entry.toplamOrucSaat || 0}s ${entry.toplamOrucDakika || 0}d | Ruh Hali: ${entry.ruhHali || 'N/A'} | Enerji: ${entry.enerjiSeviyesi || 'N/A'}</p>
+                </div>
+            `).join('');
+
+            appContent.innerHTML = `
+                <div class="bg-white p-6 shadow-xl rounded-lg">
+                    <div class="mb-6 pb-4 border-b border-slate-200">
+                        <h2 class="text-2xl font-semibold text-indigo-700 mb-1">Geçmiş Kayıtlar</h2>
+                        <p class="text-sm text-slate-500">Daha önceki günlere ait kayıtlarınızı burada görebilirsiniz. Bir kaydı görüntülemek veya düzenlemek için üzerine tıklayın.</p>
+                    </div>
+                    <div class="space-y-3 max-h-[60vh] overflow-y-auto past-entries-list pr-2">
+                        ${entriesHtml}
+                    </div>
+                </div>
+            `;
+            
+            document.querySelectorAll('.past-entry-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    selectedDate = e.currentTarget.dataset.date;
+                    renderDailyEntry(); // Switch to daily entry view for the selected date
+                });
+            });
+        }
+
+        function renderProgressCharts() {
+            currentView = 'ProgressCharts';
+            setActiveNav(navProgressCharts);
+
+            if (dailyEntries.length < 2) { // Need at least 2 data points for a meaningful chart
+                 appContent.innerHTML = `
+                    <div class="bg-white p-6 shadow-xl rounded-lg text-center">
+                        <h2 class="text-2xl font-semibold text-indigo-700 mb-3">İlerleme Grafikleri</h2>
+                        <p class="text-slate-600 mb-2">Grafikleri görüntülemek için en az 2 günlük veri girişi yapmanız gerekmektedir.</p>
+                        <p class="text-sm text-slate-500">"Günlük Kayıt" bölümünden veri girişi yapmaya devam edin.</p>
+                    </div>`;
+                return;
+            }
+            
+            // Destroy existing charts before rendering new ones
+            Object.values(charts).forEach(chart => chart.destroy());
+            charts = {};
+
+            appContent.innerHTML = `
+                <div class="bg-white p-6 shadow-xl rounded-lg">
+                    <div class="mb-6 pb-4 border-b border-slate-200">
+                        <h2 class="text-2xl font-semibold text-indigo-700 mb-1">İlerleme Grafikleri</h2>
+                        <p class="text-sm text-slate-500">Zaman içindeki ilerlemenizi gösteren grafikler aşağıdadır. Bu grafikler, oruç sürelerinizi, ruh halinizi ve enerji seviyelerinizi görselleştirmenize yardımcı olur.</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-lg font-semibold text-indigo-600 mb-2 text-center">Oruç Süresi (Saat)</h3>
+                            <div class="chart-container"><canvas id="fastingHoursChart"></canvas></div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-indigo-600 mb-2 text-center">Ruh Hali (1-5)</h3>
+                            <div class="chart-container"><canvas id="moodChart"></canvas></div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-indigo-600 mb-2 text-center">Enerji Seviyesi (1-5)</h3>
+                            <div class="chart-container"><canvas id="energyChart"></canvas></div>
+                        </div>
+                         ${dailyEntries.some(e => e.suLitre) ? `
+                        <div>
+                            <h3 class="text-lg font-semibold text-indigo-600 mb-2 text-center">Su Tüketimi (Litre)</h3>
+                            <div class="chart-container"><canvas id="waterIntakeChart"></canvas></div>
+                        </div>` : ''}
+                    </div>
+                </div>
+            `;
+
+            // Prepare data for charts (sorted by date ascending for charts)
+            const sortedEntries = [...dailyEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const labels = sortedEntries.map(e => new Date(e.date).toLocaleDateString('tr-TR', { day:'2-digit', month:'short'}));
+            
+            // Fasting Hours Chart
+            const fastingData = sortedEntries.map(e => parseFloat(e.toplamOrucSaat || 0) + parseFloat(e.toplamOrucDakika || 0)/60);
+            createChart('fastingHoursChart', 'line', labels, fastingData, 'Oruç Süresi (Saat)', 'rgba(79, 70, 229, 0.7)', 'rgba(79, 70, 229, 1)');
+
+            // Mood Chart
+            const moodData = sortedEntries.map(e => parseInt(e.ruhHali));
+            createChart('moodChart', 'line', labels, moodData, 'Ruh Hali', 'rgba(16, 185, 129, 0.7)', 'rgba(16, 185, 129, 1)'); // Emerald
+
+            // Energy Chart
+            const energyData = sortedEntries.map(e => parseInt(e.enerjiSeviyesi));
+            createChart('energyChart', 'line', labels, energyData, 'Enerji Seviyesi', 'rgba(217, 119, 6, 0.7)', 'rgba(217, 119, 6, 1)'); // Amber
+
+            // Water Intake Chart (if data exists)
+            if (dailyEntries.some(e => e.suLitre)) {
+                const waterData = sortedEntries.map(e => parseFloat(e.suLitre || 0));
+                 createChart('waterIntakeChart', 'bar', labels, waterData, 'Su Tüketimi (Litre)', 'rgba(59, 130, 246, 0.7)', 'rgba(59, 130, 246, 1)'); // Blue
+            }
+        }
+        
+        function createChart(canvasId, type, labels, data, label, bgColor, borderColor) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            charts[canvasId] = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: bgColor,
+                        borderColor: borderColor,
+                        borderWidth: 2,
+                        tension: 0.1, // For line charts
+                        fill: type === 'line' ? {target: 'origin', above: bgColor.replace('0.7', '0.3')} : false, // Fill area for line charts
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: type === 'bar', // Start y-axis at zero for bar charts
+                            ticks: { color: '#4B5563' }, // Gray-600
+                            grid: { color: '#E5E7EB' } // Gray-200
+                        },
+                        x: {
+                            ticks: { color: '#4B5563' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#374151' } // Gray-700
+                        },
+                        tooltip: {
+                            backgroundColor: '#1F2937', // Gray-800
+                            titleColor: '#F9FAFB', // Gray-50
+                            bodyColor: '#F3F4F6', // Gray-100
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1); // One decimal place for hours
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- NAVIGATION ---
+        function setActiveNav(activeButton) {
+            [navDailyEntry, navPastEntries, navProgressCharts].forEach(button => {
+                button.classList.remove('active', 'bg-indigo-500', 'text-white');
+                button.classList.add('text-slate-700');
+            });
+            activeButton.classList.add('active', 'bg-indigo-500', 'text-white');
+            activeButton.classList.remove('text-slate-700');
+        }
+
+        navDailyEntry.addEventListener('click', renderDailyEntry);
+        navPastEntries.addEventListener('click', renderPastEntries);
+        navProgressCharts.addEventListener('click', renderProgressCharts);
+
+        // --- INITIALIZATION ---
+        function initApp() {
+            const randomIndex = Math.floor(Math.random() * motivationQuotes.length);
+            motivationQuoteEl.textContent = motivationQuotes[randomIndex];
+            renderDailyEntry(); // Initial view
+        }
+
+        initApp();
+    </script>
+    <script src="./main.js"></script>
+</body>
+</html>
