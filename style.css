@@ -1,4 +1,4 @@
-body { font-family: 'Inter', sans-serif; }
+     body { font-family: 'Inter', sans-serif; }
         .nav-link { transition: background-color 0.3s, color 0.3s; }
         .nav-link.active { background-color: #6366F1; color: white; } /* Indigo-500 */
         .nav-link:not(.active):hover { background-color: #E0E7FF; } /* Indigo-100 */
