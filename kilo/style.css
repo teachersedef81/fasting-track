@@ -1,0 +1,58 @@
+/* Temel Tailwind CSS zaten CDN üzerinden geliyor, buraya özel ek stiller ekleyebilirsiniz. */
+body {
+    font-family: 'Inter', sans-serif; /* Tailwind'in varsayılan font ailesine benzer bir örnek */
+}
+
+.form-input, .form-select, .form-textarea {
+    border-radius: 0.375rem; /* rounded-md */
+    border-width: 1px;
+    border-color: #D1D5DB; /* Gray-300 */
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: #8B5CF6; /* Purple-500 */
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3); 
+    outline: none;
+}
+
+.btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    font-weight: 600;
+    transition: background-color 0.2s;
+    cursor: pointer;
+    color: white;
+}
+
+.btn-primary {
+    background-color: #7C3AED; /* Purple-600 */
+}
+
+.btn-primary:hover {
+    background-color: #6D28D9; /* Purple-700 */
+}
+
+/* Grafik container'ı için ek stiller (HTML içinde de var ama burada da tanımlanabilir) */
+.chart-container {
+    position: relative;
+    /* height ve max-width HTML içindeki style'dan geliyor, gerekirse burada override edilebilir. */
+}
+
+/* Kaydırma çubuğu stilleri (opsiyonel) */
+#gecmisKayitlarListesi::-webkit-scrollbar {
+    width: 8px;
+}
+#gecmisKayitlarListesi::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+#gecmisKayitlarListesi::-webkit-scrollbar-thumb {
+    background: #A78BFA; /* Purple-400 */
+    border-radius: 10px;
+}
+#gecmisKayitlarListesi::-webkit-scrollbar-thumb:hover {
+    background: #8B5CF6; /* Purple-500 */
+}

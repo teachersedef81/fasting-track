@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kilo Takip ve Hedefler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-purple-600">⚖️ Kilo Takip ve Hedeflerim</h1>
+            <p class="text-lg text-slate-600 mt-2">Boy: 173 cm</p>
+        </header>
+
+        <section id="hedefBolumu" class="mb-8 p-6 bg-white rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">Hedeflerim</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label for="baslangicKilo" class="block text-sm font-medium text-slate-700 mb-1">Başlangıç Kilosu (kg):</label>
+                    <input type="number" id="baslangicKilo" class="form-input" placeholder="Örn: 80">
+                </div>
+                <div>
+                    <label for="hedefKilo1" class="block text-sm font-medium text-slate-700 mb-1">İlk Hedef Kilo (kg):</label>
+                    <input type="number" id="hedefKilo1" class="form-input" placeholder="Örn: 70">
+                </div>
+                <div>
+                    <label for="hedefKilo2" class="block text-sm font-medium text-slate-700 mb-1">Nihai Hedef Kilo (kg):</label>
+                    <input type="number" id="hedefKilo2" class="form-input" placeholder="Örn: 65">
+                </div>
+            </div>
+            <button id="hedefleriKaydetBtn" class="btn btn-primary bg-purple-600 hover:bg-purple-700">🎯 Hedefleri Kaydet/Güncelle</button>
+            <div id="hedefDurumu" class="mt-4 text-sm text-slate-600">
+                </div>
+        </section>
+
+        <section id="kiloGirisBolumu" class="mb-8 p-6 bg-white rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">Günlük Kilo Girişi</h2>
+            <form id="kiloGirisFormu" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label for="tarih" class="block text-sm font-medium text-slate-700 mb-1">Tarih:</label>
+                    <input type="date" id="tarih" class="form-input" required>
+                </div>
+                <div>
+                    <label for="guncelKilo" class="block text-sm font-medium text-slate-700 mb-1">Bugünkü Kilo (kg):</label>
+                    <input type="number" step="0.1" id="guncelKilo" class="form-input" placeholder="Örn: 78.5" required>
+                </div>
+                <button type="submit" class="btn btn-primary bg-purple-600 hover:bg-purple-700 md:mt-0 mt-4 h-10">⚖️ Kiloyu Ekle</button>
+            </form>
+            <div class="mt-2">
+                <label for="gunlukNot" class="block text-sm font-medium text-slate-700 mb-1">Notlar (Opsiyonel):</label>
+                <textarea id="gunlukNot" rows="2" class="form-textarea" placeholder="Bugünkü hisleriniz, egzersiz durumu vb."></textarea>
+            </div>
+        </section>
+
+        <section id="grafikBolumu" class="mb-8 p-6 bg-white rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">Kilo Değişim Grafiği</h2>
+            <div class="chart-container mx-auto" style="height: 350px; max-width: 700px;">
+                <canvas id="kiloGrafigi"></canvas>
+            </div>
+        </section>
+
+        <section id="gecmisKayitlarBolumu" class="p-6 bg-white rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">Geçmiş Kilo Kayıtları</h2>
+            <div id="gecmisKayitlarListesi" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                <p class="text-slate-500 text-center">Henüz kilo kaydı bulunmuyor.</p>
+            </div>
+        </section>
+
+        <footer class="mt-12 text-center text-sm text-slate-500">
+            <p>&copy; <span id="currentYear"></span> Kilo Takip Uygulaması</p>
+        </footer>
+    </div>
+
+    <script src="kilo-takip.js"></script>
+</body>
+</html>
